@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+
 import Home from "./pages/Home";
 import Predict from "./pages/Predict";
 import Explain from "./pages/Explain";
+import Dashboard from "./pages/Dashboard";
+import Upload from "./pages/Upload";
 
 export default function App() {
   return (
@@ -12,7 +15,9 @@ export default function App() {
         <div className="px-4 md:px-8 py-6">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/predict" element={<Predict />} />
+            <Route path="/upload" element={<Upload />} />
             <Route path="/explain" element={<Explain />} />
           </Routes>
         </div>

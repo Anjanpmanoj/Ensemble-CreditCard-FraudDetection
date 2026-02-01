@@ -35,12 +35,16 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <NavLink to="/" label="Home" />
-          <NavLink to="/predict" label="Predict" />
-          <NavLink to="/explain" label="Explain" />
-        </div>
+      <div className="flex items-center gap-2">
+  <NavLink to="/" label="Home" />
+  <NavLink to="/dashboard" label="Dashboard" />
+  <NavLink to="/predict" label="Predict" />
+  <NavLink to="/upload" label="Upload" />
+  <NavLink to="/explain" label="Explain" />
+</div>
+
       </div>
     </div>
   );
 }
+  
