@@ -7,11 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="Credit Card Fraud Detection API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ✅ Load CNN & LSTM (h5 works fine)
 cnn = load_model("models/cnn_model.h5")
