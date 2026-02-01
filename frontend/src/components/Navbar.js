@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 export default function Navbar() {
   return (
     <div style={styles.nav}>
-      <div style={styles.brand}>💳 FraudGuard AI</div>
+      <div style={styles.brand}>💳 Credit Saver AI</div>
 
       <div style={styles.links}>
         <Link style={styles.link} to="/">Home</Link>
