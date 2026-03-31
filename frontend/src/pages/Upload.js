@@ -3,16 +3,41 @@ import Papa from "papaparse";
 import axios from "axios";
 import { API_BASE } from "../config";
 
+function ResultCard({ label, value, big, color }) {
+  return (
+    <div style={{
+      background: "var(--s2)",
+      border: "1px solid var(--border)",
+      borderRadius: 12,
+      padding: "1rem 1.1rem",
+      gridColumn: big ? "1 / -1" : "auto",
+    }}>
+      <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{
+        fontFamily: "var(--font-d)",
+        fontSize: big ? "2rem" : "1.3rem",
+        letterSpacing: "0.04em",
+        color: color || "var(--lime)",
+        lineHeight: 1,
+      }}>
+        {value ?? "—"}
+      </div>
+    </div>
+  );
+}
+
 export default function Upload() {
   const [rows, setRows] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const handleFile = (file) => {
     if (!file) return;
-
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -21,7 +46,6 @@ export default function Upload() {
           alert("No rows found in CSV.");
           return;
         }
-
         setHeaders(Object.keys(res.data[0]));
         setRows(res.data);
         setSelectedIndex(null);
@@ -31,37 +55,23 @@ export default function Upload() {
   };
 
   const predictRow = async () => {
-    if (selectedIndex === null) {
-      alert("Select a row first.");
-      return;
-    }
-
+    if (selectedIndex === null) { alert("Select a row first."); return; }
     const row = rows[selectedIndex];
-
-    // Expecting 30 features in CSV.
-    // If your CSV includes "Class", we ignore it.
     const values = Object.keys(row)
       .filter((k) => k.toLowerCase() !== "class")
       .map((k) => Number(row[k]));
-
     if (values.length !== 30) {
       alert(`CSV row must contain exactly 30 feature values. Got: ${values.length}`);
       return;
     }
-
     if (values.some((x) => Number.isNaN(x))) {
       alert("CSV contains invalid number values.");
       return;
     }
-
     try {
       setLoading(true);
       setResult(null);
-
-      const res = await axios.post(`${API_BASE}/predict`, {
-        features: values,
-      });
-
+      const res = await axios.post(`${API_BASE}/predict`, { features: values });
       setResult(res.data);
     } catch (e) {
       console.log(e);
@@ -71,74 +81,134 @@ export default function Upload() {
     }
   };
 
+  const isFraud = result?.final_label?.toLowerCase().includes("fraud");
+
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-black">Upload CSV</h2>
-          <p className="text-white/70">
-            Upload a CSV file (30 features per row). Select a row and predict.
-          </p>
-        </div>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+
+      {/* Header */}
+      <div style={{
+        marginBottom: "2rem",
+        animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both",
+      }}>
+        <div className="badge" style={{ marginBottom: 10 }}>Batch Inference</div>
+        <h2 style={{ fontSize: "clamp(2rem,4vw,3rem)", lineHeight: 1 }}>UPLOAD CSV</h2>
+        <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: 6 }}>
+          Upload a CSV with 30 features per row. Select any row and run the ensemble prediction.
+        </p>
       </div>
 
-      {/* Upload */}
-      <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="font-bold text-white/80 mb-3">Choose CSV File</div>
-
+      {/* Drop zone */}
+      <div
+        className="card"
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files?.[0]); }}
+        style={{
+          padding: "2.5rem",
+          textAlign: "center",
+          borderStyle: "dashed",
+          borderColor: dragging ? "var(--lime)" : "rgba(185,249,78,0.2)",
+          background: dragging ? "rgba(185,249,78,0.04)" : "var(--s1)",
+          transition: "all 0.2s",
+          marginBottom: "1.5rem",
+          cursor: "pointer",
+        }}
+        onClick={() => document.getElementById("csv-input").click()}
+      >
+        <div style={{
+          fontFamily: "var(--font-d)",
+          fontSize: "2rem",
+          color: "rgba(185,249,78,0.3)",
+          marginBottom: 10,
+          letterSpacing: "0.08em",
+        }}>
+          {rows.length > 0 ? `✓ ${rows.length} ROWS LOADED` : "DROP CSV HERE"}
+        </div>
+        <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: "1.2rem" }}>
+          {rows.length > 0
+            ? `${headers.length} columns detected · Click to reload`
+            : "Drag & drop or click to browse — requires 30 feature columns"}
+        </p>
         <input
+          id="csv-input"
           type="file"
           accept=".csv"
+          style={{ display: "none" }}
           onChange={(e) => handleFile(e.target.files?.[0])}
-          className="block w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-white/10 file:text-white hover:file:bg-white/15"
         />
-
+        {rows.length === 0 && (
+          <button className="btn-ghost" style={{ fontSize: "0.82rem" }} onClick={(e) => { e.stopPropagation(); document.getElementById("csv-input").click(); }}>
+            Browse File
+          </button>
+        )}
         {rows.length > 0 && (
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={predictRow}
-              disabled={loading}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-extrabold hover:opacity-90 transition disabled:opacity-50"
-            >
-              {loading ? "Predicting..." : "Predict Selected Row"}
-            </button>
-          </div>
+          <button
+            className="btn-primary"
+            disabled={loading || selectedIndex === null}
+            style={{
+              opacity: (loading || selectedIndex === null) ? 0.5 : 1,
+              cursor: (loading || selectedIndex === null) ? "not-allowed" : "pointer",
+            }}
+            onClick={(e) => { e.stopPropagation(); predictRow(); }}
+          >
+            {loading ? "⟳ Predicting..." : "▸ Predict Selected Row"}
+          </button>
         )}
       </div>
 
       {/* Table */}
       {rows.length > 0 && (
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 overflow-auto">
-          <div className="font-bold text-white/80 mb-3">
-            Preview Rows ({rows.length})
+        <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem", overflowX: "auto" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem",
+          }}>
+            <div style={{ fontFamily: "var(--font-d)", fontSize: "1.1rem", letterSpacing: "0.06em" }}>
+              PREVIEW ROWS
+            </div>
+            <div className="badge">{rows.length} total · showing first 10</div>
           </div>
 
-          <table className="w-full text-sm">
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
             <thead>
-              <tr className="text-white/60">
-                <th className="text-left p-2">Select</th>
+              <tr>
+                <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--muted)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "1px solid var(--border)" }}>
+                  Select
+                </th>
                 {headers.slice(0, 6).map((h) => (
-                  <th key={h} className="text-left p-2">
+                  <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "var(--muted)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "1px solid var(--border)" }}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-
             <tbody>
               {rows.slice(0, 10).map((row, idx) => (
-                <tr key={idx} className="border-t border-white/10">
-                  <td className="p-2">
-                    <input
-                      type="radio"
-                      name="rowSelect"
-                      checked={selectedIndex === idx}
-                      onChange={() => setSelectedIndex(idx)}
-                    />
+                <tr
+                  key={idx}
+                  onClick={() => setSelectedIndex(idx)}
+                  style={{
+                    cursor: "pointer",
+                    background: selectedIndex === idx ? "rgba(185,249,78,0.06)" : "transparent",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => { if (selectedIndex !== idx) e.currentTarget.style.background = "rgba(185,249,78,0.03)"; }}
+                  onMouseLeave={e => { if (selectedIndex !== idx) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <td style={{ padding: "10px 10px", borderBottom: "1px solid var(--border)" }}>
+                    <div style={{
+                      width: 16, height: 16,
+                      borderRadius: "50%",
+                      border: `2px solid ${selectedIndex === idx ? "var(--lime)" : "rgba(185,249,78,0.25)"}`,
+                      background: selectedIndex === idx ? "var(--lime)" : "transparent",
+                      transition: "all 0.15s",
+                    }} />
                   </td>
-
                   {headers.slice(0, 6).map((h) => (
-                    <td key={h} className="p-2 text-white/80">
+                    <td key={h} style={{ padding: "10px 10px", color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>
                       {String(row[h]).slice(0, 10)}
                     </td>
                   ))}
@@ -146,37 +216,30 @@ export default function Upload() {
               ))}
             </tbody>
           </table>
-
-          <div className="text-xs text-white/60 mt-3">
-            Showing first 10 rows and first 6 columns for preview.
+          <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 10 }}>
+            Showing first 10 rows and first 6 columns for preview. All 30 features are used for prediction.
           </div>
         </div>
       )}
 
       {/* Result */}
       {result && (
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="font-bold text-white/80 mb-3">Prediction Result</div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <ResultCard label="Final Decision" value={result.final_label} big />
-            <ResultCard label="CNN Probability" value={result.cnn_prob?.toFixed(4)} />
-            <ResultCard label="LSTM Probability" value={result.lstm_prob?.toFixed(4)} />
-            <ResultCard label="Transformer Probability" value={result.transformer_prob?.toFixed(4)} />
+        <div className="card" style={{
+          padding: "1.5rem",
+          borderColor: isFraud ? "rgba(255,59,59,0.4)" : "rgba(185,249,78,0.4)",
+          animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both",
+        }}>
+          <div style={{ fontFamily: "var(--font-d)", fontSize: "1.1rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>
+            PREDICTION RESULT
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
+            <ResultCard label="Final Decision" value={result.final_label} big color={isFraud ? "var(--red)" : "var(--lime)"} />
+            <ResultCard label="CNN Probability" value={result.cnn_prob?.toFixed(4)} color="#b9f94e" />
+            <ResultCard label="LSTM Probability" value={result.lstm_prob?.toFixed(4)} color="#06b6d4" />
+            <ResultCard label="Transformer Probability" value={result.transformer_prob?.toFixed(4)} color="#f97316" />
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ResultCard({ label, value, big }) {
-  return (
-    <div className={`rounded-2xl bg-black/30 border border-white/10 p-4 ${big ? "md:col-span-2" : ""}`}>
-      <div className="text-sm text-white/60 font-semibold">{label}</div>
-      <div className={`${big ? "text-2xl" : "text-lg"} font-black mt-1`}>
-        {value}
-      </div>
     </div>
   );
 }
