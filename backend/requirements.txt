@@ -4,3 +4,4 @@ numpy
 joblib
 xgboost
 tensorflow
+scikit-learn
