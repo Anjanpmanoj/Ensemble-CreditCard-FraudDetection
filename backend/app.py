@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 import numpy as np
 import joblib
+import os
 from tensorflow.keras.models import load_model
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Credit Card Fraud Detection API")
 
 # =====================================================
-# 🔹 CORS (Frontend support)
+# 🔹 CORS
 # =====================================================
 app.add_middleware(
     CORSMiddleware,
@@ -18,16 +19,25 @@ app.add_middleware(
 )
 
 # =====================================================
+# 🔹 BASE PATH
+# =====================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+
+# =====================================================
+# 🔹 DEBUG (VERY IMPORTANT)
+# =====================================================
+print("📂 Model folder contents:", os.listdir(MODEL_DIR))
+
+# =====================================================
 # 🔹 LOAD MODELS
 # =====================================================
-cnn = load_model("models/best_cnn.keras")
-lstm = load_model("models/best_lstm.keras")
-transformer = load_model("models/best_transformer.keras")
+cnn = load_model(os.path.join(MODEL_DIR, "best_cnn.keras"))
+lstm = load_model(os.path.join(MODEL_DIR, "best_lstm.keras"))
+transformer = load_model(os.path.join(MODEL_DIR, "best_transformer.keras"))
 
-xgb_model = joblib.load("models/best_xgboost.pkl")
-
-# 🔥 LOAD SCALER (VERY IMPORTANT)
-scaler = joblib.load("models/scaler.pkl")
+xgb_model = joblib.load(os.path.join(MODEL_DIR, "best_xgboost.pkl"))
+scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
 
 print("✅ Models + Scaler loaded successfully")
 
@@ -47,33 +57,24 @@ def predict(data: dict):
         return {"error": "Missing 'features' in request body"}
 
     try:
-        # convert to numpy
         features = np.array(data["features"], dtype=np.float32).reshape(1, -1)
 
-        # check feature size
         if features.shape[1] != 30:
             return {"error": f"Expected 30 features, got {features.shape[1]}"}
 
-        # =====================================================
-        # 🔹 APPLY SCALING (CRITICAL)
-        # =====================================================
+        # scaling
         features = scaler.transform(features)
 
-        # reshape for DL models
+        # reshape
         features_3d = features.reshape(1, features.shape[1], 1)
 
-        # =====================================================
-        # 🔹 BASE MODEL PREDICTIONS
-        # =====================================================
+        # predictions
         cnn_prob = float(cnn.predict(features_3d, verbose=0)[0][0])
         lstm_prob = float(lstm.predict(features_3d, verbose=0)[0][0])
         transformer_prob = float(transformer.predict(features_3d, verbose=0)[0][0])
 
-        # =====================================================
-        # 🔹 ENSEMBLE (XGBOOST)
-        # =====================================================
+        # ensemble
         ensemble_input = np.array([[cnn_prob, lstm_prob, transformer_prob]])
-
         final_pred = int(xgb_model.predict(ensemble_input)[0])
 
         final_label = "FRAUD 🚨" if final_pred == 1 else "NORMAL ✅"
@@ -87,5 +88,5 @@ def predict(data: dict):
         }
 
     except Exception as e:
-        return {"error": str(e)}}
+        return {"error": str(e)}
 
