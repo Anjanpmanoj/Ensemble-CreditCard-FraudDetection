@@ -1,23 +1,43 @@
-import zipfile
 import os
+import zipfile
+from tensorflow.keras.models import load_model
+import joblib
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "models")
 
-def extract_if_needed(zip_name):
-    zip_path = os.path.join(MODEL_DIR, zip_name)
-    extract_name = zip_name.replace(".zip", "")
-    extract_path = os.path.join(MODEL_DIR, extract_name)
+print("📂 Model folder contents BEFORE:", os.listdir(MODEL_DIR))
 
-    if not os.path.exists(extract_path):
+# ================================
+# 🔹 EXTRACT ZIP MODELS
+# ================================
+def extract_model(zip_name, target_name):
+    zip_path = os.path.join(MODEL_DIR, zip_name)
+    target_path = os.path.join(MODEL_DIR, target_name)
+
+    if not os.path.exists(target_path):
         print(f"🔧 Extracting {zip_name}...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(MODEL_DIR)
 
-# 🔥 Extract all models
-extract_if_needed("best_cnn.keras.zip")
-extract_if_needed("best_lstm.keras.zip")
-extract_if_needed("best_transformer.keras.zip")
+# extract all
+extract_model("best_cnn.keras.zip", "best_cnn.keras")
+extract_model("best_lstm.keras.zip", "best_lstm.keras")
+extract_model("best_transformer.keras.zip", "best_transformer.keras")
+
+print("📂 Model folder contents AFTER:", os.listdir(MODEL_DIR))
+
+# ================================
+# 🔹 LOAD MODELS
+# ================================
+cnn = load_model(os.path.join(MODEL_DIR, "best_cnn.keras"))
+lstm = load_model(os.path.join(MODEL_DIR, "best_lstm.keras"))
+transformer = load_model(os.path.join(MODEL_DIR, "best_transformer.keras"))
+
+xgb_model = joblib.load(os.path.join(MODEL_DIR, "best_xgboost.pkl"))
+scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
+
+print("✅ Models + Scaler loaded successfully")
 from fastapi import FastAPI
 import numpy as np
 import joblib
@@ -50,15 +70,7 @@ print("📂 Model folder contents:", os.listdir(MODEL_DIR))
 
 # =====================================================
 # 🔹 LOAD MODELS
-# =====================================================
-cnn = load_model(os.path.join(MODEL_DIR, "best_cnn.keras"))
-lstm = load_model(os.path.join(MODEL_DIR, "best_lstm.keras"))
-transformer = load_model(os.path.join(MODEL_DIR, "best_transformer.keras"))
 
-xgb_model = joblib.load(os.path.join(MODEL_DIR, "best_xgboost.pkl"))
-scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
-
-print("✅ Models + Scaler loaded successfully")
 
 # =====================================================
 # 🔹 ROOT
