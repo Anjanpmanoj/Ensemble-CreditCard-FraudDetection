@@ -1,7 +1,26 @@
+import zipfile
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+
+def extract_if_needed(zip_name):
+    zip_path = os.path.join(MODEL_DIR, zip_name)
+    extract_name = zip_name.replace(".zip", "")
+    extract_path = os.path.join(MODEL_DIR, extract_name)
+
+    if not os.path.exists(extract_path):
+        print(f"🔧 Extracting {zip_name}...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(MODEL_DIR)
+
+# 🔥 Extract all models
+extract_if_needed("best_cnn.keras.zip")
+extract_if_needed("best_lstm.keras.zip")
+extract_if_needed("best_transformer.keras.zip")
 from fastapi import FastAPI
 import numpy as np
 import joblib
-import os
 from tensorflow.keras.models import load_model
 from fastapi.middleware.cors import CORSMiddleware
 
