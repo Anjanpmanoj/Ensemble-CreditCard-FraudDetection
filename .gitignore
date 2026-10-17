@@ -1,6 +1,9 @@
+
+.venv/
 backend/venv/
 frontend/node_modules/
 __pycache__/
 *.pyc
 .env
 .DS_Store
+backend/fraud.db
